@@ -156,17 +156,7 @@ for(let i=0;i<eN;i++){ep[i*3]=1.5+(rng()-0.5)*0.5;ep[i*3+1]=rng()*2;ep[i*3+2]=1.
 eg.setAttribute('position',new THREE.Float32BufferAttribute(ep,3));
 const embers=new THREE.Points(eg,new THREE.PointsMaterial({color:0xffae4a,size:0.1,transparent:true,opacity:0.9,blending:THREE.AdditiveBlending,depthWrite:false}));scene.add(embers);
 
-// lean-to shelter (procedural) + survivor for scale
-const barkMat=new THREE.MeshStandardMaterial({color:0x5a4128,roughness:1});
-const plankMat=mat(0x6a4e30,0.95);
-const shelter=new THREE.Group();
-const back=new THREE.Mesh(new THREE.BoxGeometry(2.6,0.1,1.8),plankMat); back.castShadow=back.receiveShadow=true; back.rotation.x=-1.0; back.position.set(0,1.0,-0.4); shelter.add(back);
-for(let i=-1;i<=1;i++){const post=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.08,2,6),barkMat);post.castShadow=true;post.position.set(i*1.1,1,0.4);post.rotation.x=0.2;shelter.add(post);}
-shelter.position.set(4.2,0,-1.2); shelter.rotation.y=-0.5; scene.add(shelter);
-const survivor=new THREE.Group();
-const bod=new THREE.Mesh(new THREE.CapsuleGeometry(0.22,0.55,4,8),mat(0x415a6b,0.9)); bod.castShadow=true; bod.position.y=0.6; survivor.add(bod);
-const head=new THREE.Mesh(new THREE.SphereGeometry(0.2,12,10),mat(0xd8b48c,0.9)); head.castShadow=true; head.position.y=1.12; survivor.add(head);
-survivor.position.set(-0.4,0,2.4); scene.add(survivor);
+// (placeholder survivor & shelter removed — real models coming via Meshy)
 
 async function buildWorld(){
   reveal();
@@ -179,7 +169,9 @@ async function buildWorld(){
     loadGLB('./assets/models/crate.glb'),loadGLB('./assets/models/campfire.glb')]);
   const T=trees.filter(Boolean), B=bushes.filter(Boolean);
   if(campfire)place(campfire,1.5,1.5,0.7,0);
-  if(T.length)place(T[0],-1.4,-3.8,9.5,1.0); // hero tree
+  if(T.length)place(T[0],-3.5,-4.5,9.5,1.0); // hero tree
+  // a few trees right around camp so the view is always green
+  if(T.length)for(let i=0;i<10;i++){const a=i/10*6.283+0.3;const d=6.5+rng()*2;place(T[Math.floor(rng()*T.length)],Math.cos(a)*d,Math.sin(a)*d,3.5+rng()*3,rng()*6.283);}
   // a varied forest world
   for(let i=0;i<95;i++){const a=rng()*6.283,d=9+rng()*48;const m=T[Math.floor(rng()*T.length)];if(m)place(m,Math.cos(a)*d,Math.sin(a)*d,3.0+rng()*5.5,rng()*6.283);}
   if(B.length)for(let i=0;i<46;i++){const a=rng()*6.283,d=6+rng()*46;place(B[Math.floor(rng()*B.length)],Math.cos(a)*d,Math.sin(a)*d,0.6+rng()*0.9,rng()*6.283);}
@@ -195,10 +187,10 @@ const pmrem=new THREE.PMREMGenerator(renderer); pmrem.compileEquirectangularShad
 new RGBELoader().load('./assets/sky.hdr',hdr=>{hdr.mapping=THREE.EquirectangularReflectionMapping;const env=pmrem.fromEquirectangular(hdr).texture;scene.environment=env;scene.background=env;scene.backgroundBlurriness=0.5;hdr.dispose();pmrem.dispose();reveal();},undefined,()=>{scene.background=new THREE.Color(0x9fb0c0);reveal();});
 
 // camera
-let cam={az:0.85,el:0.95,dist:24,distT:24,tx:1,ty:1.2,tz:0};
+let cam={az:0.9,el:0.82,dist:38,distT:38,tx:0,ty:1.5,tz:0};
 function setCam(){const cx=Math.cos(cam.az)*Math.cos(cam.el)*cam.dist,cy=Math.sin(cam.el)*cam.dist,cz=Math.sin(cam.az)*Math.cos(cam.el)*cam.dist;camera.position.set(cam.tx+cx,cam.ty+cy,cam.tz+cz);camera.lookAt(cam.tx,cam.ty,cam.tz);}
 const clampEl=v=>Math.max(0.5,Math.min(1.28,v));
-function zoomTo(v){cam.distT=Math.max(11,Math.min(46,v));}
+function zoomTo(v){cam.distT=Math.max(13,Math.min(80,v));}
 // --- mouse (desktop) ---
 let mdrag=null;
 cv.addEventListener('pointerdown',e=>{if(e.pointerType==='touch')return;mdrag={x:e.clientX,y:e.clientY};});
@@ -214,8 +206,8 @@ cv.addEventListener('touchmove',e=>{
   if(e.touches.length===1&&tdrag){const t=e.touches[0];cam.az-=(t.clientX-tdrag.x)*0.005;cam.el=clampEl(cam.el+(t.clientY-tdrag.y)*0.003);tdrag={x:t.clientX,y:t.clientY};e.preventDefault();}
 },{passive:false});
 cv.addEventListener('touchend',e=>{if(e.touches.length===0){tdrag=null;pinch=null;}else if(e.touches.length===1){pinch=null;tdrag={x:e.touches[0].clientX,y:e.touches[0].clientY};}},{passive:false});
-document.getElementById('zin').onclick=()=>zoomTo(cam.distT-4);
-document.getElementById('zout').onclick=()=>zoomTo(cam.distT+4);
+document.getElementById('zin').onclick=()=>zoomTo(cam.distT-7);
+document.getElementById('zout').onclick=()=>zoomTo(cam.distT+7);
 
 function applyTime(t){
   const day=new THREE.Color(0xaecbe6),dusk=new THREE.Color(0xc98a4a),night=new THREE.Color(0x0d1626);
@@ -239,6 +231,7 @@ Object.keys(TB).forEach(id=>document.getElementById(id).onclick=()=>{timeT=TB[id
 const q=new URLSearchParams(location.search);
 if(q.has('t'))timeT=parseFloat(q.get('t'));
 if(q.has('az'))cam.az=parseFloat(q.get('az'));
+if(q.has('dist')){cam.dist=cam.distT=parseFloat(q.get('dist'));}
 const spin=q.get('spin')==='1';
 
 const mini=document.getElementById('mini');
@@ -265,7 +258,6 @@ function loop(now){
   const ap=embers.geometry.attributes.position;
   for(let i=0;i<eN;i++){let y=ap.getY(i)+ev[i]*dt;if(y>2.4){y=0.1;ap.setX(i,1.5+(rng()-0.5)*0.5);ap.setZ(i,1.5+(rng()-0.5)*0.5);}ap.setY(i,y);}
   ap.needsUpdate=true;
-  survivor.position.y=Math.abs(Math.sin(tsec*3))*0.04;
   composer.render();
   requestAnimationFrame(loop);
 }
