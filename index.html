@@ -110,13 +110,13 @@ const MAXA=renderer.capabilities.getMaxAnisotropy();
 
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x9ec6e8); // always-on sky
-scene.add(new THREE.AmbientLight(0xffffff,0.7)); // guaranteed fill
+scene.add(new THREE.AmbientLight(0xffffff,0.22)); // gentle fill
 let revealed=false; function reveal(){if(revealed)return;revealed=true;const l=document.getElementById('load');if(l)l.style.display='none';}
 setTimeout(reveal,8000);
 const camera=new THREE.PerspectiveCamera(34,1,0.1,400);
 const composer=new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene,camera));
-const bloom=new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),0.55,0.5,0.82);
+const bloom=new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),0.38,0.5,0.9);
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
 
@@ -186,15 +186,15 @@ const pmrem=new THREE.PMREMGenerator(renderer); pmrem.compileEquirectangularShad
 new RGBELoader().load('./assets/sky.hdr',hdr=>{hdr.mapping=THREE.EquirectangularReflectionMapping;const env=pmrem.fromEquirectangular(hdr).texture;scene.environment=env;hdr.dispose();pmrem.dispose();reveal();},undefined,()=>{scene.background=new THREE.Color(0x9fb0c0);reveal();});
 
 // camera
-let cam={az:0.9,el:0.8,dist:42,distT:42,tx:0,ty:1.0,tz:0};
+let cam={az:0.9,azT:0.9,el:0.82,elT:0.82,dist:42,distT:42,tx:0,ty:1.0,tz:0};
 function setCam(){const cx=Math.cos(cam.az)*Math.cos(cam.el)*cam.dist,cy=Math.sin(cam.el)*cam.dist,cz=Math.sin(cam.az)*Math.cos(cam.el)*cam.dist;camera.position.set(cam.tx+cx,cam.ty+cy,cam.tz+cz);camera.lookAt(cam.tx,cam.ty,cam.tz);}
-const clampEl=v=>Math.max(0.5,Math.min(1.28,v));
+const clampEl=v=>Math.max(0.6,Math.min(1.2,v));
 function zoomTo(v){cam.distT=Math.max(13,Math.min(80,v));}
 // --- mouse (desktop) ---
 let mdrag=null;
 cv.addEventListener('pointerdown',e=>{if(e.pointerType==='touch')return;mdrag={x:e.clientX,y:e.clientY};});
 window.addEventListener('pointerup',e=>{if(e.pointerType!=='touch')mdrag=null;});
-window.addEventListener('pointermove',e=>{if(e.pointerType==='touch'||!mdrag)return;cam.az-=(e.clientX-mdrag.x)*0.005;cam.el=clampEl(cam.el+(e.clientY-mdrag.y)*0.003);mdrag={x:e.clientX,y:e.clientY};});
+window.addEventListener('pointermove',e=>{if(e.pointerType==='touch'||!mdrag)return;cam.azT-=(e.clientX-mdrag.x)*0.004;cam.elT=clampEl(cam.elT+(e.clientY-mdrag.y)*0.0026);mdrag={x:e.clientX,y:e.clientY};});
 cv.addEventListener('wheel',e=>{zoomTo(cam.distT+e.deltaY*0.02);e.preventDefault();},{passive:false});
 // --- touch (mobile): 1 finger = rotate, 2 fingers = pinch zoom, never both ---
 let tdrag=null,pinch=null;
@@ -202,7 +202,7 @@ const dist2=ts=>Math.hypot(ts[0].clientX-ts[1].clientX,ts[0].clientY-ts[1].clien
 cv.addEventListener('touchstart',e=>{if(e.touches.length===2){pinch=dist2(e.touches);tdrag=null;}else if(e.touches.length===1){tdrag={x:e.touches[0].clientX,y:e.touches[0].clientY};pinch=null;}e.preventDefault();},{passive:false});
 cv.addEventListener('touchmove',e=>{
   if(e.touches.length>=2){const d=dist2(e.touches);if(pinch)zoomTo(cam.distT-(d-pinch)*0.06);pinch=d;tdrag=null;e.preventDefault();return;}
-  if(e.touches.length===1&&tdrag){const t=e.touches[0];cam.az-=(t.clientX-tdrag.x)*0.005;cam.el=clampEl(cam.el+(t.clientY-tdrag.y)*0.003);tdrag={x:t.clientX,y:t.clientY};e.preventDefault();}
+  if(e.touches.length===1&&tdrag){const t=e.touches[0];cam.azT-=(t.clientX-tdrag.x)*0.004;cam.elT=clampEl(cam.elT+(t.clientY-tdrag.y)*0.0026);tdrag={x:t.clientX,y:t.clientY};e.preventDefault();}
 },{passive:false});
 cv.addEventListener('touchend',e=>{if(e.touches.length===0){tdrag=null;pinch=null;}else if(e.touches.length===1){pinch=null;tdrag={x:e.touches[0].clientX,y:e.touches[0].clientY};}},{passive:false});
 document.getElementById('zin').onclick=()=>zoomTo(cam.distT-7);
@@ -211,7 +211,7 @@ document.getElementById('zout').onclick=()=>zoomTo(cam.distT+7);
 function applyTime(t){
   const day=new THREE.Color(0xaecbe6),dusk=new THREE.Color(0xc98a4a),night=new THREE.Color(0x0d1626);
   let sunI,sunC,hemiI,fireI,exposure,fogC;
-  if(t<0.5){const k=t/0.5;fogC=day.clone().lerp(dusk,k);sunI=2.2-1.0*k;sunC=new THREE.Color(0xfff0d4).lerp(new THREE.Color(0xff9a52),k);hemiI=0.55-0.2*k;fireI=0.4+1.8*k;exposure=0.95-0.05*k;}
+  if(t<0.5){const k=t/0.5;fogC=day.clone().lerp(dusk,k);sunI=1.45-0.55*k;sunC=new THREE.Color(0xfff0d4).lerp(new THREE.Color(0xff9a52),k);hemiI=0.3-0.12*k;fireI=0.4+1.8*k;exposure=0.8-0.03*k;}
   else{const k=(t-0.5)/0.5;fogC=dusk.clone().lerp(night,k);sunI=1.2-1.15*k;sunC=new THREE.Color(0xff9a52).lerp(new THREE.Color(0x3a4a80),k);hemiI=0.35-0.24*k;fireI=2.2+1.4*k;exposure=0.9+0.18*k;}
   scene.fog.color.copy(fogC);
   sun.intensity=Math.max(0,sunI); sun.color.copy(sunC);
@@ -222,7 +222,7 @@ function applyTime(t){
   
   document.getElementById('clock').textContent='DAY 3 · '+(t<0.5?'09:42':t<0.8?'18:20':'21:55');
 }
-let timeT=0.0;
+let timeT=0.2;
 const TB={bDay:0.0,bDusk:0.42,bNight:0.92};
 function setTB(id){['bDay','bDusk','bNight'].forEach(b=>document.getElementById(b).classList.toggle('on',b===id));}
 Object.keys(TB).forEach(id=>document.getElementById(id).onclick=()=>{timeT=TB[id];applyTime(timeT);setTB(id);});
@@ -244,7 +244,9 @@ applyTime(timeT); setTB(q.has('t')?(timeT<0.2?'bDay':timeT<0.7?'bDusk':'bNight')
 let last=performance.now(),tsec=0;
 function loop(now){
   const dt=Math.min(0.05,(now-last)/1000); last=now; tsec+=dt;
-  if(spin) cam.az+=dt*0.05;
+  const k=Math.min(1,dt*11);
+  cam.az+=(cam.azT-cam.az)*k;
+  cam.el+=(cam.elT-cam.el)*k;
   cam.dist+=(cam.distT-cam.dist)*Math.min(1,dt*9);
   setCam();
   const fl=0.82+Math.sin(tsec*13)*0.12+Math.sin(tsec*29)*0.05;
