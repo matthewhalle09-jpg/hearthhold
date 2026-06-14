@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a0e10">
+<title>HEARTHHOLD — Realistic Look Test</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;font-family:-apple-system,'Segoe UI',system-ui,sans-serif;}
+  html,body{height:100%;overflow:hidden;background:#0a0e10;color:#eef3f0;}
+  #cv{display:block;width:100vw;height:100vh;touch-action:none;}
+  #load{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;background:#0a0e10;z-index:20;}
+  #load .l{font-weight:900;letter-spacing:5px;font-size:26px;background:linear-gradient(180deg,#fff,#cdaa6a);-webkit-background-clip:text;background-clip:text;color:transparent;}
+  #load .s{font-size:12px;opacity:.5;letter-spacing:1px;}
+  .spin{width:34px;height:34px;border:3px solid rgba(255,255,255,.14);border-top-color:#cdaa6a;border-radius:50%;animation:sp 1s linear infinite;}
+  @keyframes sp{to{transform:rotate(360deg);}}
+  #hud{position:fixed;inset:0;pointer-events:none;z-index:10;}
+  .tl{position:absolute;top:calc(8px + env(safe-area-inset-top));left:10px;display:flex;gap:9px;align-items:flex-start;}
+  .lvl{width:42px;height:42px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#3a4452,#171c24);border:2px solid #c9a86a;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:17px;box-shadow:0 3px 10px rgba(0,0,0,.5);}
+  .bars{display:flex;flex-direction:column;gap:4px;}
+  .bar{width:152px;height:13px;border-radius:7px;background:rgba(8,12,14,.6);border:1px solid rgba(255,255,255,.12);overflow:hidden;position:relative;box-shadow:0 2px 6px rgba(0,0,0,.4);}
+  .bar i{position:absolute;inset:0;border-radius:7px;}
+  .bar b{position:absolute;right:6px;top:0;font-size:9.5px;line-height:13px;font-weight:700;text-shadow:0 1px 2px #000;}
+  .hpf{background:linear-gradient(90deg,#e0473e,#ff7a5e);width:100%;}
+  .hgf{background:linear-gradient(90deg,#d98a2b,#ffc24a);width:88%;}
+  .wtf{background:linear-gradient(90deg,#2f8fd0,#62c4ff);width:74%;}
+  .enf{background:linear-gradient(90deg,#3a9a4a,#7fe06a);width:81%;}
+  .quest{position:absolute;top:74px;left:14px;font-size:12px;line-height:1.7;text-shadow:0 1px 3px #000;}
+  .quest .h{color:#e8c878;font-weight:800;letter-spacing:.5px;margin-bottom:2px;}
+  .quest .q{opacity:.92;}.quest .q i{display:inline-block;width:13px;height:13px;border:1.5px solid #9fb0a4;border-radius:3px;vertical-align:-2px;margin-right:6px;}
+  .tr{position:absolute;top:calc(8px + env(safe-area-inset-top));right:10px;display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
+  .mini{width:92px;height:92px;border-radius:50%;background:radial-gradient(circle at 50% 45%,#4a5a3e,#1c2418);border:2px solid rgba(220,200,150,.55);box-shadow:0 3px 12px rgba(0,0,0,.55);position:relative;overflow:hidden;}
+  .mini .blip{position:absolute;width:6px;height:6px;border-radius:50%;}
+  .daytime{background:rgba(8,12,14,.62);border:1px solid rgba(255,255,255,.12);border-radius:9px;padding:4px 10px;font-weight:800;font-size:12px;letter-spacing:.5px;display:flex;gap:7px;align-items:center;}
+  .daytime .sun{color:#ffcf5a;}
+  .stick{position:absolute;left:calc(14px + env(safe-area-inset-left));bottom:calc(22px + env(safe-area-inset-bottom));width:112px;height:112px;border-radius:50%;background:rgba(10,14,16,.32);border:2px solid rgba(255,255,255,.18);}
+  .stick .nub{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:48px;height:48px;border-radius:50%;background:rgba(230,235,230,.35);border:1px solid rgba(255,255,255,.4);box-shadow:0 2px 8px rgba(0,0,0,.4);}
+  .acts{position:absolute;right:calc(14px + env(safe-area-inset-right));bottom:calc(86px + env(safe-area-inset-bottom));display:flex;gap:12px;align-items:flex-end;}
+  .rbtn{width:54px;height:54px;border-radius:50%;background:radial-gradient(circle at 40% 35%,rgba(60,70,80,.85),rgba(20,26,32,.9));border:1.5px solid rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 3px 10px rgba(0,0,0,.5);}
+  .rbtn.big{width:66px;height:66px;border-color:#c9a86a;background:radial-gradient(circle at 40% 35%,rgba(150,110,60,.9),rgba(70,45,20,.95));font-weight:900;font-size:10px;letter-spacing:1px;color:#ffe6b0;flex-direction:column;gap:1px;}
+  .hot{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(10px + env(safe-area-inset-bottom));display:flex;gap:5px;}
+  .slot{width:42px;height:42px;border-radius:8px;background:rgba(10,14,16,.6);border:1px solid rgba(255,255,255,.14);position:relative;display:flex;align-items:center;justify-content:center;font-size:22px;}
+  .slot.sel{border-color:#e8c878;box-shadow:0 0 10px rgba(232,200,120,.4);}
+  .slot b{position:absolute;right:3px;bottom:1px;font-size:10px;font-weight:800;text-shadow:0 1px 2px #000;}
+  .brand{position:fixed;top:calc(8px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);font-weight:900;letter-spacing:3px;font-size:12px;opacity:.45;z-index:11;background:linear-gradient(180deg,#fff,#cdaa6a);-webkit-background-clip:text;background-clip:text;color:transparent;pointer-events:none;}
+  #ctl{position:fixed;left:50%;transform:translateX(-50%);bottom:64px;display:flex;gap:8px;z-index:12;}
+  .tb{pointer-events:auto;background:rgba(16,22,26,.8);border:1px solid rgba(255,255,255,.18);color:#fff;font-weight:700;font-size:12px;padding:8px 13px;border-radius:10px;backdrop-filter:blur(6px);}
+  .tb.on{background:linear-gradient(180deg,#e8c878,#c9923a);color:#241800;border-color:transparent;}
+  #zoom{position:fixed;right:calc(12px + env(safe-area-inset-right));top:42%;display:flex;flex-direction:column;gap:8px;z-index:12;}
+  .zb{pointer-events:auto;width:46px;height:46px;border-radius:50%;background:rgba(16,22,26,.8);border:1px solid rgba(255,255,255,.2);color:#fff;font-size:22px;font-weight:700;backdrop-filter:blur(6px);}
+</style>
+</head>
+<body>
+<div id="load"><div class="l">HEARTHHOLD</div><div class="spin"></div><div class="s">loading the wilds…</div></div>
+<canvas id="cv"></canvas>
+<div class="brand">HEARTHHOLD · REALISTIC TEST</div>
+<div id="hud">
+  <div class="tl">
+    <div class="lvl">7</div>
+    <div class="bars">
+      <div class="bar"><i class="hpf"></i><b>100/100</b></div>
+      <div class="bar"><i class="hgf"></i><b>88/100</b></div>
+      <div class="bar"><i class="wtf"></i><b>74/100</b></div>
+      <div class="bar"><i class="enf"></i><b>81/100</b></div>
+    </div>
+  </div>
+  <div class="quest">
+    <div class="h">Getting Started</div>
+    <div class="q"><i></i>Collect Wood 8/20</div>
+    <div class="q"><i></i>Collect Stone 6/10</div>
+    <div class="q"><i></i>Build a Shelter 0/1</div>
+  </div>
+  <div class="tr">
+    <div class="mini" id="mini"></div>
+    <div class="daytime"><span class="sun">☀</span><span id="clock">DAY 3 · 09:42</span></div>
+  </div>
+  <div class="stick"><div class="nub"></div></div>
+  <div class="acts">
+    <div class="rbtn">🎒</div><div class="rbtn">🪓</div><div class="rbtn">✋</div>
+    <div class="rbtn big">⚒<span>CRAFT</span></div>
+  </div>
+  <div class="hot">
+    <div class="slot sel">🪓</div><div class="slot">⛏️</div><div class="slot">🗡️</div>
+    <div class="slot">🪵<b>8</b></div><div class="slot">🪨<b>6</b></div><div class="slot">🍖<b>2</b></div><div class="slot">🧪<b>1</b></div>
+  </div>
+</div>
+<div id="zoom"><button class="zb" id="zin">＋</button><button class="zb" id="zout">－</button><button class="zb" id="rotL">↺</button><button class="zb" id="rotR">↻</button></div>
+<div id="ctl">
+  <button class="tb on" id="bDay">☀ Day</button>
+  <button class="tb" id="bDusk">🌆 Dusk</button>
+  <button class="tb" id="bNight">🌙 Night</button>
+</div>
+
+<script type="importmap">{"imports":{"three":"./three.module.js"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {EffectComposer} from './jsm/postprocessing/EffectComposer.js';
+import {RenderPass} from './jsm/postprocessing/RenderPass.js';
+import {UnrealBloomPass} from './jsm/postprocessing/UnrealBloomPass.js';
+import {OutputPass} from './jsm/postprocessing/OutputPass.js';
+import {RGBELoader} from './jsm/loaders/RGBELoader.js';
+import {GLTFLoader} from './jsm/loaders/GLTFLoader.js';
+
+const cv=document.getElementById('cv');
+const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true});
+renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=0.92;
+const MAXA=renderer.capabilities.getMaxAnisotropy();
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x9ec6e8); // always-on sky
+scene.add(new THREE.AmbientLight(0xffffff,0.22)); // gentle fill
+let revealed=false; function reveal(){if(revealed)return;revealed=true;const l=document.getElementById('load');if(l)l.style.display='none';}
+setTimeout(reveal,8000);
+const camera=new THREE.PerspectiveCamera(34,1,0.1,400);
+const composer=new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene,camera));
+const bloom=new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),0.38,0.5,0.9);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+const sun=new THREE.DirectionalLight(0xfff0d4,2.0);
+sun.castShadow=true; sun.shadow.mapSize.set(2048,2048);
+sun.shadow.camera.near=1; sun.shadow.camera.far=120;
+sun.shadow.camera.left=-32;sun.shadow.camera.right=32;sun.shadow.camera.top=32;sun.shadow.camera.bottom=-32;
+sun.shadow.bias=-0.0004; sun.shadow.normalBias=0.025;
+scene.add(sun,sun.target);
+const hemi=new THREE.HemisphereLight(0xbfe0ff,0x3a3026,0.5); scene.add(hemi);
+scene.fog=new THREE.Fog(0x9fb0a0,40,150);
+
+const TL=new THREE.TextureLoader();
+function tex(url,srgb,rep){const t=TL.load(url);if(srgb)t.colorSpace=THREE.SRGBColorSpace;t.wrapS=t.wrapT=THREE.RepeatWrapping;if(rep)t.repeat.set(rep,rep);t.anisotropy=MAXA;return t;}
+function mat(c,r=0.9,m=0){return new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:m});}
+function box(w,h,d,mt){const me=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mt);me.castShadow=me.receiveShadow=true;return me;}
+const rng=(s=>()=>(s=Math.imul(48271,s)%2147483647)/2147483647)(99221);
+
+// ground (realistic PBR)
+const gmat=new THREE.MeshStandardMaterial({map:tex('./assets/ff_diff.jpg',true,9),normalMap:tex('./assets/ff_nor.jpg',false,9),roughnessMap:tex('./assets/ff_rough.jpg',false,9),roughness:1,metalness:0,color:0x5f7a3c});
+const gg=new THREE.PlaneGeometry(120,120,80,80); gg.rotateX(-Math.PI/2);
+const gp=gg.attributes.position;
+for(let i=0;i<gp.count;i++){const x=gp.getX(i),z=gp.getZ(i),d=Math.hypot(x,z);let h=(Math.sin(x*0.09)*Math.cos(z*0.08))*1.3+(rng()-0.5)*0.4;if(d<9)h*=0.1;gp.setY(i,h);}
+gg.computeVertexNormals();
+const ground=new THREE.Mesh(gg,gmat); ground.receiveShadow=true; scene.add(ground);
+
+// ---- real game-ready models (CC0, Poly Pizza / Quaternius) ----
+const gltfLoader=new GLTFLoader();
+function loadGLB(u){return new Promise(res=>{let done=false;const fin=v=>{if(!done){done=true;res(v);}};setTimeout(()=>fin(null),12000);gltfLoader.load(u,g=>fin(g.scene),undefined,()=>fin(null));});}
+function prep(proto,h){const o=proto.clone(true);o.traverse(m=>{if(m.isMesh){m.castShadow=true;m.receiveShadow=true;}});const bb=new THREE.Box3().setFromObject(o);const sz=new THREE.Vector3();bb.getSize(sz);o.scale.setScalar(h/(sz.y||1));const bb2=new THREE.Box3().setFromObject(o);o.position.y=-bb2.min.y;return o;}
+function place(proto,x,z,h,ry){const o=prep(proto,h);o.position.x=x;o.position.z=z;o.rotation.y=ry||0;scene.add(o);return o;}
+
+// glowing fire kept procedural (the light/flame/embers)
+const flameMat=new THREE.MeshStandardMaterial({color:0xff8a20,emissive:0xff5a10,emissiveIntensity:4,roughness:0.4});
+const flame=new THREE.Mesh(new THREE.ConeGeometry(0.34,1.0,7),flameMat); flame.position.set(1.5,0.7,1.5); scene.add(flame);
+const flame2=new THREE.Mesh(new THREE.ConeGeometry(0.2,0.7,6),new THREE.MeshStandardMaterial({color:0xffd24a,emissive:0xffcf4d,emissiveIntensity:5})); flame2.position.set(1.5,0.82,1.5); scene.add(flame2);
+const fireLight=new THREE.PointLight(0xff7a30,0,28,1.7); fireLight.position.set(1.5,1.4,1.5); scene.add(fireLight);
+let fireBase=2;
+const eN=70,eg=new THREE.BufferGeometry(),ep=new Float32Array(eN*3),ev=[];
+for(let i=0;i<eN;i++){ep[i*3]=1.5+(rng()-0.5)*0.5;ep[i*3+1]=rng()*2;ep[i*3+2]=1.5+(rng()-0.5)*0.5;ev.push(0.5+rng()*1.1);}
+eg.setAttribute('position',new THREE.Float32BufferAttribute(ep,3));
+const embers=new THREE.Points(eg,new THREE.PointsMaterial({color:0xffae4a,size:0.1,transparent:true,opacity:0.9,blending:THREE.AdditiveBlending,depthWrite:false}));scene.add(embers);
+
+// (placeholder survivor & shelter removed — real models coming via Meshy)
+
+function buildWorld(){
+  reveal();
+  // light, fast tree files only (heavy 3-4MB ones dropped); each species pops in as it loads
+  const treeNames=['tree_pine','tree_pine2','tree_oak','tree_birch','tree_willow','tree_dead'];
+  treeNames.forEach((n,idx)=>loadGLB('./assets/models/'+n+'.glb').then(m=>{
+    if(!m)return;
+    if(idx===0)place(m,-3.5,-4.5,9.5,1.0); // a hero near camp
+    // a clump near camp so the view is green right away
+    for(let i=0;i<5;i++){const a=rng()*6.283,d=6.5+rng()*4;place(m,Math.cos(a)*d,Math.sin(a)*d,3.5+rng()*3,rng()*6.283);}
+    // scattered across the world
+    for(let i=0;i<16;i++){const a=rng()*6.283,d=11+rng()*46;place(m,Math.cos(a)*d,Math.sin(a)*d,3.0+rng()*5.5,rng()*6.283);}
+  }));
+  loadGLB('./assets/models/campfire.glb').then(m=>{if(m)place(m,1.5,1.5,0.7,0);});
+  loadGLB('./assets/models/rock.glb').then(m=>{if(!m)return;for(let i=0;i<22;i++){const a=rng()*6.283,d=5+rng()*46;place(m,Math.cos(a)*d,Math.sin(a)*d,0.5+rng()*1.8,rng()*6.283);}});
+  loadGLB('./assets/models/barrel.glb').then(m=>{if(!m)return;place(m,3.5,-0.4,0.95,0.4);place(m,4.0,0.0,0.95,1.3);});
+  loadGLB('./assets/models/crate.glb').then(m=>{if(!m)return;place(m,-1.9,1.5,0.8,0.3);place(m,-2.3,1.0,0.8,1.1);});
+}
+buildWorld();
+
+// HDRI environment
+const pmrem=new THREE.PMREMGenerator(renderer); pmrem.compileEquirectangularShader();
+reveal(); // (HDRI env removed — was overbrightening; sun+hemi+ambient light the scene)
+
+// camera
+let cam={az:0.9,azT:0.9,el:0.82,elT:0.82,dist:42,distT:42,tx:0,ty:1.0,tz:0};
+function setCam(){const cx=Math.cos(cam.az)*Math.cos(cam.el)*cam.dist,cy=Math.sin(cam.el)*cam.dist,cz=Math.sin(cam.az)*Math.cos(cam.el)*cam.dist;camera.position.set(cam.tx+cx,cam.ty+cy,cam.tz+cz);camera.lookAt(cam.tx,cam.ty,cam.tz);}
+const clampEl=v=>Math.max(0.6,Math.min(1.2,v));
+function zoomTo(v){cam.distT=Math.max(13,Math.min(80,v));}
+const clampW=v=>Math.max(-46,Math.min(46,v));
+function panBy(dx,dy){const s=cam.dist*0.0017,az=cam.az;const rx=-Math.sin(az),rz=Math.cos(az),fx=-Math.cos(az),fz=-Math.sin(az);cam.tx=clampW(cam.tx-(rx*dx+fx*dy)*s);cam.tz=clampW(cam.tz-(rz*dx+fz*dy)*s);}
+// mouse: drag = pan, wheel = zoom
+let mdrag=null;
+cv.addEventListener('pointerdown',e=>{if(e.pointerType==='touch')return;mdrag={x:e.clientX,y:e.clientY};});
+window.addEventListener('pointerup',e=>{if(e.pointerType!=='touch')mdrag=null;});
+window.addEventListener('pointermove',e=>{if(e.pointerType==='touch'||!mdrag)return;panBy(e.clientX-mdrag.x,e.clientY-mdrag.y);mdrag={x:e.clientX,y:e.clientY};});
+cv.addEventListener('wheel',e=>{zoomTo(cam.distT+e.deltaY*0.02);e.preventDefault();},{passive:false});
+// touch: 1 finger = pan around the world, 2 fingers = pinch zoom
+let tdrag=null,pinch=null;
+const dist2=ts=>Math.hypot(ts[0].clientX-ts[1].clientX,ts[0].clientY-ts[1].clientY);
+cv.addEventListener('touchstart',e=>{if(e.touches.length>=2){pinch=dist2(e.touches);tdrag=null;}else{tdrag={x:e.touches[0].clientX,y:e.touches[0].clientY};pinch=null;}e.preventDefault();},{passive:false});
+cv.addEventListener('touchmove',e=>{
+  if(e.touches.length>=2){const d=dist2(e.touches);if(pinch)zoomTo(cam.distT-(d-pinch)*0.06);pinch=d;tdrag=null;e.preventDefault();return;}
+  if(e.touches.length===1&&tdrag){const t=e.touches[0];panBy(t.clientX-tdrag.x,t.clientY-tdrag.y);tdrag={x:t.clientX,y:t.clientY};e.preventDefault();}
+},{passive:false});
+cv.addEventListener('touchend',e=>{if(e.touches.length===0){tdrag=null;pinch=null;}else{pinch=null;tdrag={x:e.touches[0].clientX,y:e.touches[0].clientY};}},{passive:false});
+document.getElementById('zin').onclick=()=>zoomTo(cam.distT-7);
+document.getElementById('zout').onclick=()=>zoomTo(cam.distT+7);
+document.getElementById('rotL').onclick=()=>{cam.azT-=0.5;};
+document.getElementById('rotR').onclick=()=>{cam.azT+=0.5;};
+
+function applyTime(t){
+  const day=new THREE.Color(0xaecbe6),dusk=new THREE.Color(0xc98a4a),night=new THREE.Color(0x0d1626);
+  let sunI,sunC,hemiI,fireI,exposure,fogC;
+  if(t<0.5){const k=t/0.5;fogC=day.clone().lerp(dusk,k);sunI=1.45-0.55*k;sunC=new THREE.Color(0xfff0d4).lerp(new THREE.Color(0xff9a52),k);hemiI=0.3-0.12*k;fireI=0.4+1.8*k;exposure=0.72-0.04*k;}
+  else{const k=(t-0.5)/0.5;fogC=dusk.clone().lerp(night,k);sunI=1.2-1.15*k;sunC=new THREE.Color(0xff9a52).lerp(new THREE.Color(0x3a4a80),k);hemiI=0.35-0.24*k;fireI=2.2+1.4*k;exposure=0.9+0.18*k;}
+  scene.fog.color.copy(fogC);
+  sun.intensity=Math.max(0,sunI); sun.color.copy(sunC);
+  sun.position.set(Math.cos((0.3+t*0.5)*Math.PI)*45,Math.max(4,(1-t)*45+6),Math.sin((0.3+t*0.4)*Math.PI)*30);
+  hemi.intensity=Math.max(0.08,hemiI);
+  fireBase=fireI*1.6; fireLight.intensity=fireBase;
+  renderer.toneMappingExposure=exposure;
+  
+  document.getElementById('clock').textContent='DAY 3 · '+(t<0.5?'09:42':t<0.8?'18:20':'21:55');
+}
+let timeT=0.2;
+const TB={bDay:0.0,bDusk:0.42,bNight:0.92};
+function setTB(id){['bDay','bDusk','bNight'].forEach(b=>document.getElementById(b).classList.toggle('on',b===id));}
+Object.keys(TB).forEach(id=>document.getElementById(id).onclick=()=>{timeT=TB[id];applyTime(timeT);setTB(id);});
+
+const q=new URLSearchParams(location.search);
+if(q.has('t'))timeT=parseFloat(q.get('t'));
+if(q.has('az'))cam.az=parseFloat(q.get('az'));
+if(q.has('dist')){cam.dist=cam.distT=parseFloat(q.get('dist'));}
+const spin=q.get('spin')==='1';
+
+const mini=document.getElementById('mini');
+[['#6cff8a',50,55],['#ffcf4d',60,40],['#ff6a5a',38,46],['#6cff8a',46,62],['#cfe0ff',70,58]].forEach(b=>{const d=document.createElement('div');d.className='blip';d.style.background=b[0];d.style.left=b[1]+'%';d.style.top=b[2]+'%';mini.appendChild(d);});
+
+function resize(){const w=innerWidth,h=innerHeight;renderer.setSize(w,h,false);composer.setSize(w,h);bloom.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();}
+window.addEventListener('resize',resize); resize();
+
+
+applyTime(timeT); setTB(q.has('t')?(timeT<0.2?'bDay':timeT<0.7?'bDusk':'bNight'):'bDusk'); setCam();
+let last=performance.now(),tsec=0;
+function loop(now){
+  const dt=Math.min(0.05,(now-last)/1000); last=now; tsec+=dt;
+  const k=Math.min(1,dt*11);
+  cam.az+=(cam.azT-cam.az)*k;
+  cam.el+=(cam.elT-cam.el)*k;
+  cam.dist+=(cam.distT-cam.dist)*Math.min(1,dt*9);
+  setCam();
+  const fl=0.82+Math.sin(tsec*13)*0.12+Math.sin(tsec*29)*0.05;
+  flame.scale.set(0.9+0.2*Math.sin(tsec*9),fl,0.9+0.2*Math.cos(tsec*11));
+  flame2.scale.y=0.9+0.25*Math.sin(tsec*16);
+  fireLight.intensity=fireBase*(0.8+fl*0.25);
+  fireLight.position.y=1.4+Math.sin(tsec*22)*0.1;
+  const ap=embers.geometry.attributes.position;
+  for(let i=0;i<eN;i++){let y=ap.getY(i)+ev[i]*dt;if(y>2.4){y=0.1;ap.setX(i,1.5+(rng()-0.5)*0.5);ap.setZ(i,1.5+(rng()-0.5)*0.5);}ap.setY(i,y);}
+  ap.needsUpdate=true;
+  composer.render();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+window.__ready=true;
+</script>
+</body>
+</html>
