@@ -171,13 +171,14 @@ survivor.position.set(-0.4,0,2.4); scene.add(survivor);
 async function buildWorld(){
   const treeNames=['tree_pine','tree_pine2','tree_oak','tree_oak2','tree_birch','tree_willow','tree_dead'];
   const bushNames=['tree_bush','tree_shrub'];
-  const [trees,bushes,rock,barrel,crate,campfire]=await Promise.all([
+  const [trees,bushes,rock,barrel,crate,campfire,watchtower]=await Promise.all([
     Promise.all(treeNames.map(n=>loadGLB('./assets/models/'+n+'.glb'))),
     Promise.all(bushNames.map(n=>loadGLB('./assets/models/'+n+'.glb'))),
     loadGLB('./assets/models/rock.glb'),loadGLB('./assets/models/barrel.glb'),
-    loadGLB('./assets/models/crate.glb'),loadGLB('./assets/models/campfire.glb')]);
+    loadGLB('./assets/models/crate.glb'),loadGLB('./assets/models/campfire.glb'),loadGLB('./assets/models/watchtower.glb')]);
   const T=trees.filter(Boolean), B=bushes.filter(Boolean);
   if(campfire)place(campfire,1.5,1.5,0.7,0);
+  if(watchtower)place(watchtower,5.5,3.2,5.5,-0.5); // YOUR custom Meshy asset
   if(T.length)place(T[0],-1.4,-3.8,9.5,1.0); // hero tree
   // a varied forest world
   for(let i=0;i<95;i++){const a=rng()*6.283,d=9+rng()*48;const m=T[Math.floor(rng()*T.length)];if(m)place(m,Math.cos(a)*d,Math.sin(a)*d,3.0+rng()*5.5,rng()*6.283);}
