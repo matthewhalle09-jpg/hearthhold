@@ -111,6 +111,8 @@ const MAXA=renderer.capabilities.getMaxAnisotropy();
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x9ec6e8); // always-on sky
 scene.add(new THREE.AmbientLight(0xffffff,0.7)); // guaranteed fill
+let revealed=false; function reveal(){if(revealed)return;revealed=true;const l=document.getElementById('load');if(l)l.style.display='none';}
+setTimeout(reveal,8000);
 const camera=new THREE.PerspectiveCamera(34,1,0.1,400);
 const composer=new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene,camera));
@@ -237,8 +239,6 @@ const mini=document.getElementById('mini');
 function resize(){const w=innerWidth,h=innerHeight;renderer.setSize(w,h,false);composer.setSize(w,h);bloom.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();}
 window.addEventListener('resize',resize); resize();
 
-let revealed=false; function reveal(){if(revealed)return;revealed=true;document.getElementById('load').style.display='none';}
-setTimeout(reveal,9000);
 
 applyTime(timeT); setTB(q.has('t')?(timeT<0.2?'bDay':timeT<0.7?'bDusk':'bNight'):'bDusk'); setCam();
 let last=performance.now(),tsec=0;
