@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a0e18">
+<title>HEARTHHOLD — 3D Look Test</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;overflow:hidden;background:#0a0e18;font-family:-apple-system,'Segoe UI',system-ui,sans-serif;color:#eaf0ff;}
+  #cv{display:block;width:100vw;height:100vh;touch-action:none;}
+  #hud{position:fixed;top:0;left:0;right:0;display:flex;align-items:center;gap:10px;padding:10px 14px;pointer-events:none;
+    background:linear-gradient(180deg,rgba(6,9,16,.55),rgba(6,9,16,0));}
+  #hud .logo{font-weight:900;letter-spacing:3px;font-size:18px;
+    background:linear-gradient(180deg,#fff,#ffcf6a 70%,#ff8a3c);-webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 2px 10px rgba(255,160,60,.4));}
+  #hud .tag{font-size:11px;opacity:.6;letter-spacing:1px;}
+  #ctl{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:center;gap:8px;padding:14px;flex-wrap:wrap;
+    background:linear-gradient(0deg,rgba(6,9,16,.6),rgba(6,9,16,0));}
+  .btn{pointer-events:auto;background:rgba(20,28,50,.85);border:1px solid rgba(120,160,255,.2);color:#fff;font-weight:700;
+    font-size:13px;padding:10px 16px;border-radius:11px;cursor:pointer;backdrop-filter:blur(6px);transition:.12s;letter-spacing:.5px;}
+  .btn:hover{filter:brightness(1.2);transform:translateY(-1px);}
+  .btn.on{background:linear-gradient(180deg,#ffcf4d,#e0991f);color:#241800;border-color:transparent;}
+  #hint{position:fixed;left:50%;top:54px;transform:translateX(-50%);font-size:11px;opacity:.45;letter-spacing:1px;pointer-events:none;}
+  #load{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;background:#0a0e18;z-index:5;}
+  #load .l{font-weight:900;letter-spacing:4px;font-size:24px;background:linear-gradient(180deg,#fff,#ffcf6a);-webkit-background-clip:text;background-clip:text;color:transparent;}
+  #load .s{font-size:12px;opacity:.5;}
+  .spin{width:34px;height:34px;border:3px solid rgba(255,255,255,.15);border-top-color:#ffcf4d;border-radius:50%;animation:sp 1s linear infinite;}
+  @keyframes sp{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+<div id="load"><div class="l">HEARTHHOLD</div><div class="spin"></div><div class="s">building the world…</div></div>
+<canvas id="cv"></canvas>
+<div id="hud"><div><div class="logo">HEARTHHOLD</div><div class="tag">3D LOOK TEST</div></div></div>
+<div id="hint">drag to orbit · pinch / scroll to zoom</div>
+<div id="ctl">
+  <button class="btn" id="bDay">☀ Day</button>
+  <button class="btn on" id="bDusk">🌆 Dusk</button>
+  <button class="btn" id="bNight">🌙 Night</button>
+  <button class="btn" id="bAuto">⏱ Auto-cycle</button>
+</div>
+
+<script type="module">
+import * as THREE from './three.module.js';
+
+const cv=document.getElementById('cv');
+const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true});
+renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.05;
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(42,1,0.1,300);
+
+// ---------- lighting rig ----------
+const hemi=new THREE.HemisphereLight(0xbfd6ff,0x4a3a2a,0.9); scene.add(hemi);
+const sun=new THREE.DirectionalLight(0xfff2d6,2.2);
+sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048);
+sun.shadow.camera.near=1; sun.shadow.camera.far=120;
+sun.shadow.camera.left=-40; sun.shadow.camera.right=40; sun.shadow.camera.top=40; sun.shadow.camera.bottom=-40;
+sun.shadow.bias=-0.0004; sun.shadow.normalBias=0.02;
+scene.add(sun); scene.add(sun.target);
+const fill=new THREE.DirectionalLight(0x88aaff,0.25); fill.position.set(-20,18,-14); scene.add(fill);
+
+// ---------- helpers ----------
+const rng=(s=>()=>(s=Math.imul(48271,s)%2147483647)/2147483647)(123456);
+function mat(color,rough=0.85,metal=0,emiss=0x000000,ei=0){return new THREE.MeshStandardMaterial({color,roughness:rough,metalness:metal,emissive:emiss,emissiveIntensity:ei,flatShading:true});}
+function box(w,h,d,m){const g=new THREE.BoxGeometry(w,h,d);const me=new THREE.Mesh(g,m);me.castShadow=true;me.receiveShadow=true;return me;}
+function addAt(obj,x,y,z,ry=0){obj.position.set(x,y,z);obj.rotation.y=ry;scene.add(obj);return obj;}
+
+// ---------- ground: gentle low-poly hills with grass tones ----------
+const GS=70, GN=70;
+const gground=new THREE.PlaneGeometry(GS,GS,GN,GN);
+gground.rotateX(-Math.PI/2);
+const pos=gground.attributes.position;
+const col=[];
+const c1=new THREE.Color(0x4f7a36), c2=new THREE.Color(0x6f9a44), c3=new THREE.Color(0x3c6630);
+for(let i=0;i<pos.count;i++){
+  const x=pos.getX(i), z=pos.getZ(i);
+  const d=Math.hypot(x,z);
+  let h=(Math.sin(x*0.18)*Math.cos(z*0.16))*0.9 + (rng()-0.5)*0.5;
+  if(d<11) h*=0.15; // flatten the village plaza
+  pos.setY(i,h);
+  const t=Math.min(1,Math.max(0,(h+1)/2 + (rng()-0.5)*0.25));
+  const cc=c1.clone().lerp(c2,t); if(rng()>0.85) cc.lerp(c3,0.6);
+  col.push(cc.r,cc.g,cc.b);
+}
+gground.computeVertexNormals();
+gground.setAttribute('color',new THREE.Float32BufferAttribute(col,3));
+const ground=new THREE.Mesh(gground,new THREE.MeshStandardMaterial({vertexColors:true,roughness:1,flatShading:true}));
+ground.receiveShadow=true; scene.add(ground);
+
+// dirt plaza disc
+const plaza=new THREE.Mesh(new THREE.CircleGeometry(10.5,40),new THREE.MeshStandardMaterial({color:0x8a6e44,roughness:1}));
+plaza.rotation.x=-Math.PI/2; plaza.position.y=0.04; plaza.receiveShadow=true; scene.add(plaza);
+
+// ---------- houses ----------
+function house(scale,wallC,roofC){
+  const g=new THREE.Group();
+  const w=2.4*scale,h=1.7*scale,d=2.0*scale;
+  const body=box(w,h,d,mat(wallC,0.9)); body.position.y=h/2; g.add(body);
+  // timber frame accents
+  const beam=mat(0x4a3526,0.95);
+  const b1=box(w*1.02,0.16*scale,d*1.02,beam); b1.position.y=h*0.55; g.add(b1);
+  // roof (4-sided pyramid)
+  const roof=new THREE.Mesh(new THREE.ConeGeometry(w*0.92,1.2*scale,4),mat(roofC,0.8));
+  roof.rotation.y=Math.PI/4; roof.position.y=h+0.6*scale; roof.castShadow=true; roof.receiveShadow=true; g.add(roof);
+  // door
+  const door=box(0.55*scale,1.0*scale,0.1,mat(0x3a2818,0.9)); door.position.set(0,0.5*scale,d/2+0.01); g.add(door);
+  // windows (emissive — glow at night)
+  const winMat=mat(0x20242c,0.4,0,0xffd27a,0); g.userData.winMat=winMat;
+  for(const sx of [-1,1]){const win=box(0.42*scale,0.42*scale,0.08,winMat); win.position.set(sx*0.7*scale,0.95*scale,d/2+0.01); g.add(win);}
+  return g;
+}
+const housePalette=[[0xd8c8a8,0x9a3b34],[0xcdbb96,0x6a8a4a],[0xe0d2b0,0x7a5a8a],[0xd2c0a0,0xb06a2e]];
+const winMats=[];
+const ring=[[8.5,0,0],[6,0,6.5],[-6.5,0,5.5],[-8.5,0,-1],[-5.5,0,-7],[3,0,-8],[8,0,-5.5]];
+ring.forEach((p,i)=>{
+  const pal=housePalette[i%housePalette.length];
+  const hh=house(1+ (i%3)*0.12, pal[0], pal[1]);
+  const ang=Math.atan2(-p[2],-p[0]);
+  addAt(hh,p[0],0,p[2],ang+Math.PI/2);
+  winMats.push(hh.userData.winMat);
+});
+
+// ---------- the Hall (Hearth building) — bigger centerpiece ----------
+const hall=new THREE.Group();
+const hb=box(4.2,2.6,3.4,mat(0xc8b890,0.9)); hb.position.y=1.3; hall.add(hb);
+const hroof=new THREE.Mesh(new THREE.ConeGeometry(3.3,2.2,4),mat(0x8a2f2a,0.8)); hroof.rotation.y=Math.PI/4; hroof.position.y=3.7; hroof.castShadow=true; hall.add(hroof);
+const banner=box(0.1,1.2,0.7,mat(0xffcf4d,0.6,0.1,0xffcf4d,0.3)); banner.position.set(2.15,1.6,0); hall.add(banner);
+const hwin=mat(0x20242c,0.4,0,0xffd27a,0); winMats.push(hwin);
+for(const sx of[-1,1]){const w=box(0.6,0.7,0.1,hwin); w.position.set(sx*1.1,1.5,1.71); hall.add(w);}
+addAt(hall,-2.5,0,-2,0.3);
+
+// ---------- campfire (the hearth) ----------
+const fire=new THREE.Group();
+const logMat=mat(0x4a3220,0.95);
+for(let i=0;i<5;i++){const l=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,1.4,6),logMat); l.castShadow=true; l.rotation.z=Math.PI/2; l.rotation.y=i*Math.PI/5; l.position.y=0.12; fire.add(l);}
+const flameMat=new THREE.MeshStandardMaterial({color:0xff7a1e,emissive:0xff5a10,emissiveIntensity:2.2,roughness:0.5});
+const flame=new THREE.Mesh(new THREE.ConeGeometry(0.5,1.3,7),flameMat); flame.position.y=0.85; fire.add(flame);
+const flame2=new THREE.Mesh(new THREE.ConeGeometry(0.3,0.9,6),new THREE.MeshStandardMaterial({color:0xffd24a,emissive:0xffcf4d,emissiveIntensity:2.6})); flame2.position.y=0.95; fire.add(flame2);
+addAt(fire,1.5,0,2.5,0);
+const fireLight=new THREE.PointLight(0xff8a3c,0,26,1.6); fireLight.position.set(1.5,1.6,2.5); fireLight.castShadow=true; fireLight.shadow.mapSize.set(1024,1024); scene.add(fireLight);
+
+// embers
+const emberN=60, eg=new THREE.BufferGeometry(), ep=new Float32Array(emberN*3), ev=[];
+for(let i=0;i<emberN;i++){ep[i*3]=1.5+(rng()-0.5)*0.6;ep[i*3+1]=rng()*2;ep[i*3+2]=2.5+(rng()-0.5)*0.6;ev.push(0.6+rng()*1.2);}
+eg.setAttribute('position',new THREE.Float32BufferAttribute(ep,3));
+const embers=new THREE.Points(eg,new THREE.PointsMaterial({color:0xffb04a,size:0.12,transparent:true,opacity:0.9,blending:THREE.AdditiveBlending,depthWrite:false}));
+scene.add(embers);
+
+// ---------- trees ----------
+function tree(s){const g=new THREE.Group();const tr=new THREE.Mesh(new THREE.CylinderGeometry(0.16*s,0.22*s,1.3*s,6),mat(0x5a3f28,1));tr.castShadow=true;tr.position.y=0.65*s;g.add(tr);
+  const greens=[0x2f6b34,0x3c7d3e,0x356e38];
+  for(let i=0;i<3;i++){const f=new THREE.Mesh(new THREE.IcosahedronGeometry((0.95-i*0.18)*s,0),mat(greens[i%3],1));f.castShadow=true;f.position.y=(1.4+i*0.55)*s;f.rotation.y=rng()*3;g.add(f);}
+  return g;}
+for(let i=0;i<26;i++){const a=rng()*Math.PI*2, d=14+rng()*18; const t=tree(0.8+rng()*0.8); addAt(t,Math.cos(a)*d,0,Math.sin(a)*d,rng()*3);}
+// rocks
+for(let i=0;i<14;i++){const a=rng()*Math.PI*2,d=12+rng()*20;const r=new THREE.Mesh(new THREE.DodecahedronGeometry(0.4+rng()*0.6,0),mat(0x808890,1));r.castShadow=true;r.receiveShadow=true;addAt(r,Math.cos(a)*d,0.2,Math.sin(a)*d,rng()*3);}
+
+// ---------- palisade wall (partial ring) ----------
+const wallMat=mat(0x6b4a2c,0.95);
+for(let a=-0.4;a<Math.PI*1.4;a+=0.16){const x=Math.cos(a)*11.2,z=Math.sin(a)*11.2;const post=new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.26,2.2,6),wallMat);post.castShadow=true;post.receiveShadow=true;post.position.set(x,1.0,z);post.rotation.y=a;scene.add(post);
+  const tip=new THREE.Mesh(new THREE.ConeGeometry(0.26,0.4,6),wallMat);tip.position.set(x,2.2,z);tip.castShadow=true;scene.add(tip);}
+
+// ---------- a couple villagers for scale/life ----------
+function villager(c){const g=new THREE.Group();const body=new THREE.Mesh(new THREE.CapsuleGeometry(0.22,0.5,3,8),mat(c,0.9));body.castShadow=true;body.position.y=0.55;g.add(body);const head=new THREE.Mesh(new THREE.SphereGeometry(0.2,10,8),mat(0xe8c9a0,0.9));head.castShadow=true;head.position.y=1.05;g.add(head);return g;}
+const vills=[];
+[[0.5,3.5,0x2f6bbf],[-1.5,4.2,0x8a3b34],[3.2,1.5,0x3c8a5a]].forEach(p=>{const v=villager(p[2]);addAt(v,p[0],0,p[1],rng()*6);vills.push(v);});
+
+// ---------- camera orbit + input ----------
+let orbit={az:0.7, el:0.62, dist:34, tx:0, ty:1.5, tz:0};
+let drag=null;
+function setCam(){
+  const cx=Math.cos(orbit.az)*Math.cos(orbit.el)*orbit.dist;
+  const cy=Math.sin(orbit.el)*orbit.dist;
+  const cz=Math.sin(orbit.az)*Math.cos(orbit.el)*orbit.dist;
+  camera.position.set(orbit.tx+cx,orbit.ty+cy,orbit.tz+cz);
+  camera.lookAt(orbit.tx,orbit.ty,orbit.tz);
+}
+cv.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY};auto=false;setBtns();});
+window.addEventListener('pointerup',()=>drag=null);
+window.addEventListener('pointermove',e=>{if(!drag)return;orbit.az-=(e.clientX-drag.x)*0.006;orbit.el=Math.max(0.18,Math.min(1.3,orbit.el+(e.clientY-drag.y)*0.004));drag={x:e.clientX,y:e.clientY};});
+cv.addEventListener('wheel',e=>{orbit.dist=Math.max(16,Math.min(60,orbit.dist+e.deltaY*0.03));e.preventDefault();},{passive:false});
+let pinch=null;
+cv.addEventListener('touchmove',e=>{if(e.touches.length===2){const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;const d=Math.hypot(dx,dy);if(pinch)orbit.dist=Math.max(16,Math.min(60,orbit.dist-(d-pinch)*0.05));pinch=d;e.preventDefault();}},{passive:false});
+cv.addEventListener('touchend',()=>pinch=null);
+
+// ---------- time of day ----------
+const SKY={day:new THREE.Color(0x9fd0ff), dusk:new THREE.Color(0x2a2746), night:new THREE.Color(0x070b18)};
+function applyTime(t){ // t: 0=day .. 0.5=dusk .. 1=night
+  let sky,sunI,sunC,hemiI,fireI,winI,sunY,sunX,exposure;
+  if(t<0.5){const k=t/0.5; sky=SKY.day.clone().lerp(SKY.dusk,k); sunI=2.4-1.2*k; sunC=new THREE.Color(0xfff2d6).lerp(new THREE.Color(0xff9a4a),k); hemiI=0.95-0.45*k; fireI=0.3+1.7*k; winI=k*0.6; sunY=0.9-0.5*k; sunX=0.6+0.3*k; exposure=1.05;}
+  else{const k=(t-0.5)/0.5; sky=SKY.dusk.clone().lerp(SKY.night,k); sunI=1.2-1.1*k; sunC=new THREE.Color(0xff9a4a).lerp(new THREE.Color(0x3a4a88),k); hemiI=0.5-0.32*k; fireI=2.0+1.2*k; winI=0.6+0.4*k; sunY=0.4-0.2*k; sunX=0.9; exposure=1.05+0.15*k;}
+  scene.background=sky; scene.fog=new THREE.Fog(sky.getHex(), 34, 110);
+  sun.intensity=Math.max(0,sunI); sun.color=sunC;
+  sun.position.set(Math.cos(sunX*Math.PI)*40, Math.max(3,sunY*45), Math.sin(sunX*Math.PI*0.7)*30);
+  hemi.intensity=Math.max(0.08,hemiI);
+  fireLight.intensity=fireI*1.5;
+  renderer.toneMappingExposure=exposure;
+  flameMat.emissiveIntensity=1.6+fireI*0.4;
+  for(const m of winMats){m.emissiveIntensity=winI*1.6;}
+}
+let timeT=0.32, auto=false;
+const btns={bDay:0.0,bDusk:0.42,bNight:0.95};
+function setBtns(active){['bDay','bDusk','bNight','bAuto'].forEach(id=>document.getElementById(id).classList.toggle('on',id===active));}
+Object.keys(btns).forEach(id=>document.getElementById(id).onclick=()=>{auto=false;timeT=btns[id];applyTime(timeT);setBtns(id);});
+document.getElementById('bAuto').onclick=()=>{auto=true;setBtns('bAuto');};
+
+// URL params for screenshots: ?t=0.42&spin=0&az=0.7
+const q=new URLSearchParams(location.search);
+if(q.has('t'))timeT=parseFloat(q.get('t'));
+if(q.has('az'))orbit.az=parseFloat(q.get('az'));
+const spin=q.get('spin')!=='0';
+if(q.has('t')){const v={'0':'bDay','0.42':'bDusk','0.95':'bNight'}[q.get('t')]; if(v)setBtns(v); else setBtns();}
+
+// ---------- resize ----------
+function resize(){const w=innerWidth,h=innerHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
+window.addEventListener('resize',resize); resize();
+
+// ---------- loop ----------
+let last=performance.now(), tsec=0;
+applyTime(timeT); setCam();
+document.getElementById('load').style.display='none';
+function loop(now){
+  const dt=Math.min(0.05,(now-last)/1000); last=now; tsec+=dt;
+  if(auto){timeT=(timeT+dt*0.06)%1; applyTime(timeT);}
+  if(spin&&!drag) orbit.az+=dt*0.12;
+  setCam();
+  // fire flicker
+  const fl=0.85+Math.sin(tsec*13)*0.1+Math.sin(tsec*27)*0.05;
+  flame.scale.set(0.9+0.2*Math.sin(tsec*9),fl,0.9+0.2*Math.cos(tsec*11));
+  flame2.scale.y=0.9+0.25*Math.sin(tsec*15);
+  fireLight.position.y=1.5+Math.sin(tsec*20)*0.12;
+  fireLight.intensity*=(0.96+fl*0.08);
+  // embers rise
+  const ap=embers.geometry.attributes.position;
+  for(let i=0;i<emberN;i++){let y=ap.getY(i)+ev[i]*dt; if(y>2.6){y=0.1;ap.setX(i,1.5+(rng()-0.5)*0.6);ap.setZ(i,2.5+(rng()-0.5)*0.6);} ap.setY(i,y);}
+  ap.needsUpdate=true;
+  // villagers bob
+  vills.forEach((v,i)=>{v.position.y=Math.abs(Math.sin(tsec*4+i))*0.06;});
+  renderer.render(scene,camera);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+window.__ready=true;
+</script>
+</body>
+</html>
