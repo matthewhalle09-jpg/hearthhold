@@ -143,7 +143,7 @@ const ground=new THREE.Mesh(gg,gmat); ground.receiveShadow=true; scene.add(groun
 
 // ---- real game-ready models (CC0, Poly Pizza / Quaternius) ----
 const gltfLoader=new GLTFLoader();
-function loadGLB(u){return new Promise(res=>gltfLoader.load(u,g=>res(g.scene),undefined,()=>res(null)));}
+function loadGLB(u){return new Promise(res=>{let done=false;const fin=v=>{if(!done){done=true;res(v);}};setTimeout(()=>fin(null),12000);gltfLoader.load(u,g=>fin(g.scene),undefined,()=>fin(null));});}
 function prep(proto,h){const o=proto.clone(true);o.traverse(m=>{if(m.isMesh){m.castShadow=true;m.receiveShadow=true;}});const bb=new THREE.Box3().setFromObject(o);const sz=new THREE.Vector3();bb.getSize(sz);o.scale.setScalar(h/(sz.y||1));const bb2=new THREE.Box3().setFromObject(o);o.position.y=-bb2.min.y;return o;}
 function place(proto,x,z,h,ry){const o=prep(proto,h);o.position.x=x;o.position.z=z;o.rotation.y=ry||0;scene.add(o);return o;}
 
@@ -160,27 +160,22 @@ const embers=new THREE.Points(eg,new THREE.PointsMaterial({color:0xffae4a,size:0
 
 // (placeholder survivor & shelter removed — real models coming via Meshy)
 
-async function buildWorld(){
+function buildWorld(){
   reveal();
-  const treeNames=['tree_pine','tree_pine2','tree_oak','tree_oak2','tree_birch','tree_willow','tree_dead'];
-  const bushNames=['tree_bush','tree_shrub'];
-  const [trees,bushes,rock,barrel,crate,campfire]=await Promise.all([
-    Promise.all(treeNames.map(n=>loadGLB('./assets/models/'+n+'.glb'))),
-    Promise.all(bushNames.map(n=>loadGLB('./assets/models/'+n+'.glb'))),
-    loadGLB('./assets/models/rock.glb'),loadGLB('./assets/models/barrel.glb'),
-    loadGLB('./assets/models/crate.glb'),loadGLB('./assets/models/campfire.glb')]);
-  const T=trees.filter(Boolean), B=bushes.filter(Boolean);
-  if(campfire)place(campfire,1.5,1.5,0.7,0);
-  if(T.length)place(T[0],-3.5,-4.5,9.5,1.0); // hero tree
-  // a few trees right around camp so the view is always green
-  if(T.length)for(let i=0;i<10;i++){const a=i/10*6.283+0.3;const d=6.5+rng()*2;place(T[Math.floor(rng()*T.length)],Math.cos(a)*d,Math.sin(a)*d,3.5+rng()*3,rng()*6.283);}
-  // a varied forest world
-  for(let i=0;i<95;i++){const a=rng()*6.283,d=9+rng()*48;const m=T[Math.floor(rng()*T.length)];if(m)place(m,Math.cos(a)*d,Math.sin(a)*d,3.0+rng()*5.5,rng()*6.283);}
-  if(B.length)for(let i=0;i<46;i++){const a=rng()*6.283,d=6+rng()*46;place(B[Math.floor(rng()*B.length)],Math.cos(a)*d,Math.sin(a)*d,0.6+rng()*0.9,rng()*6.283);}
-  if(rock)for(let i=0;i<24;i++){const a=rng()*6.283,d=5+rng()*46;place(rock,Math.cos(a)*d,Math.sin(a)*d,0.5+rng()*1.8,rng()*6.283);}
-  if(barrel){place(barrel,3.5,-0.4,0.95,0.4);place(barrel,4.0,0.0,0.95,1.3);}
-  if(crate){place(crate,-1.9,1.5,0.8,0.3);place(crate,-2.3,1.0,0.8,1.1);place(crate,-2.0,1.0,1.6,2.0);}
-  reveal();
+  // light, fast tree files only (heavy 3-4MB ones dropped); each species pops in as it loads
+  const treeNames=['tree_pine','tree_pine2','tree_oak','tree_birch','tree_willow','tree_dead'];
+  treeNames.forEach((n,idx)=>loadGLB('./assets/models/'+n+'.glb').then(m=>{
+    if(!m)return;
+    if(idx===0)place(m,-3.5,-4.5,9.5,1.0); // a hero near camp
+    // a clump near camp so the view is green right away
+    for(let i=0;i<5;i++){const a=rng()*6.283,d=6.5+rng()*4;place(m,Math.cos(a)*d,Math.sin(a)*d,3.5+rng()*3,rng()*6.283);}
+    // scattered across the world
+    for(let i=0;i<16;i++){const a=rng()*6.283,d=11+rng()*46;place(m,Math.cos(a)*d,Math.sin(a)*d,3.0+rng()*5.5,rng()*6.283);}
+  }));
+  loadGLB('./assets/models/campfire.glb').then(m=>{if(m)place(m,1.5,1.5,0.7,0);});
+  loadGLB('./assets/models/rock.glb').then(m=>{if(!m)return;for(let i=0;i<22;i++){const a=rng()*6.283,d=5+rng()*46;place(m,Math.cos(a)*d,Math.sin(a)*d,0.5+rng()*1.8,rng()*6.283);}});
+  loadGLB('./assets/models/barrel.glb').then(m=>{if(!m)return;place(m,3.5,-0.4,0.95,0.4);place(m,4.0,0.0,0.95,1.3);});
+  loadGLB('./assets/models/crate.glb').then(m=>{if(!m)return;place(m,-1.9,1.5,0.8,0.3);place(m,-2.3,1.0,0.8,1.1);});
 }
 buildWorld();
 
