@@ -86,8 +86,8 @@
 </div>
 <div id="zoom"><button class="zb" id="zin">＋</button><button class="zb" id="zout">－</button></div>
 <div id="ctl">
-  <button class="tb" id="bDay">☀ Day</button>
-  <button class="tb on" id="bDusk">🌆 Dusk</button>
+  <button class="tb on" id="bDay">☀ Day</button>
+  <button class="tb" id="bDusk">🌆 Dusk</button>
   <button class="tb" id="bNight">🌙 Night</button>
 </div>
 
@@ -109,6 +109,8 @@ renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=0
 const MAXA=renderer.capabilities.getMaxAnisotropy();
 
 const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x9ec6e8); // always-on sky
+scene.add(new THREE.AmbientLight(0xffffff,0.7)); // guaranteed fill
 const camera=new THREE.PerspectiveCamera(34,1,0.1,400);
 const composer=new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene,camera));
@@ -132,7 +134,7 @@ function box(w,h,d,mt){const me=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mt);
 const rng=(s=>()=>(s=Math.imul(48271,s)%2147483647)/2147483647)(99221);
 
 // ground (realistic PBR)
-const gmat=new THREE.MeshStandardMaterial({map:tex('./assets/ff_diff.jpg',true,9),normalMap:tex('./assets/ff_nor.jpg',false,9),roughnessMap:tex('./assets/ff_rough.jpg',false,9),roughness:1,metalness:0});
+const gmat=new THREE.MeshStandardMaterial({map:tex('./assets/ff_diff.jpg',true,9),normalMap:tex('./assets/ff_nor.jpg',false,9),roughnessMap:tex('./assets/ff_rough.jpg',false,9),roughness:1,metalness:0,color:0x5f7a3c});
 const gg=new THREE.PlaneGeometry(120,120,80,80); gg.rotateX(-Math.PI/2);
 const gp=gg.attributes.position;
 for(let i=0;i<gp.count;i++){const x=gp.getX(i),z=gp.getZ(i),d=Math.hypot(x,z);let h=(Math.sin(x*0.09)*Math.cos(z*0.08))*1.3+(rng()-0.5)*0.4;if(d<9)h*=0.1;gp.setY(i,h);}
@@ -184,10 +186,10 @@ buildWorld();
 
 // HDRI environment
 const pmrem=new THREE.PMREMGenerator(renderer); pmrem.compileEquirectangularShader();
-new RGBELoader().load('./assets/sky.hdr',hdr=>{hdr.mapping=THREE.EquirectangularReflectionMapping;const env=pmrem.fromEquirectangular(hdr).texture;scene.environment=env;scene.background=env;scene.backgroundBlurriness=0.5;hdr.dispose();pmrem.dispose();reveal();},undefined,()=>{scene.background=new THREE.Color(0x9fb0c0);reveal();});
+new RGBELoader().load('./assets/sky.hdr',hdr=>{hdr.mapping=THREE.EquirectangularReflectionMapping;const env=pmrem.fromEquirectangular(hdr).texture;scene.environment=env;hdr.dispose();pmrem.dispose();reveal();},undefined,()=>{scene.background=new THREE.Color(0x9fb0c0);reveal();});
 
 // camera
-let cam={az:0.9,el:0.82,dist:38,distT:38,tx:0,ty:1.5,tz:0};
+let cam={az:0.9,el:0.8,dist:42,distT:42,tx:0,ty:1.0,tz:0};
 function setCam(){const cx=Math.cos(cam.az)*Math.cos(cam.el)*cam.dist,cy=Math.sin(cam.el)*cam.dist,cz=Math.sin(cam.az)*Math.cos(cam.el)*cam.dist;camera.position.set(cam.tx+cx,cam.ty+cy,cam.tz+cz);camera.lookAt(cam.tx,cam.ty,cam.tz);}
 const clampEl=v=>Math.max(0.5,Math.min(1.28,v));
 function zoomTo(v){cam.distT=Math.max(13,Math.min(80,v));}
@@ -220,10 +222,10 @@ function applyTime(t){
   hemi.intensity=Math.max(0.08,hemiI);
   fireBase=fireI*1.6; fireLight.intensity=fireBase;
   renderer.toneMappingExposure=exposure;
-  if(scene.environment) scene.backgroundBlurriness=t<0.5?0.5:0.5+0.4*((t-0.5)/0.5);
+  
   document.getElementById('clock').textContent='DAY 3 · '+(t<0.5?'09:42':t<0.8?'18:20':'21:55');
 }
-let timeT=0.42;
+let timeT=0.0;
 const TB={bDay:0.0,bDusk:0.42,bNight:0.92};
 function setTB(id){['bDay','bDusk','bNight'].forEach(b=>document.getElementById(b).classList.toggle('on',b===id));}
 Object.keys(TB).forEach(id=>document.getElementById(id).onclick=()=>{timeT=TB[id];applyTime(timeT);setTB(id);});
