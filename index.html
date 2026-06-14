@@ -145,7 +145,7 @@ const flameMat=new THREE.MeshStandardMaterial({color:0xff7a1e,emissive:0xff5a10,
 const flame=new THREE.Mesh(new THREE.ConeGeometry(0.5,1.3,7),flameMat); flame.position.y=0.85; fire.add(flame);
 const flame2=new THREE.Mesh(new THREE.ConeGeometry(0.3,0.9,6),new THREE.MeshStandardMaterial({color:0xffd24a,emissive:0xffcf4d,emissiveIntensity:2.6})); flame2.position.y=0.95; fire.add(flame2);
 addAt(fire,1.5,0,2.5,0);
-const fireLight=new THREE.PointLight(0xff8a3c,0,26,1.6); fireLight.position.set(1.5,1.6,2.5); fireLight.castShadow=true; fireLight.shadow.mapSize.set(1024,1024); scene.add(fireLight);
+const fireLight=new THREE.PointLight(0xff8a3c,0,26,1.6); fireLight.position.set(1.5,1.6,2.5); scene.add(fireLight);
 
 // embers
 const emberN=60, eg=new THREE.BufferGeometry(), ep=new Float32Array(emberN*3), ev=[];
