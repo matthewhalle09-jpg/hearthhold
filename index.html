@@ -84,7 +84,7 @@
     <div class="slot">🪵<b>8</b></div><div class="slot">🪨<b>6</b></div><div class="slot">🍖<b>2</b></div><div class="slot">🧪<b>1</b></div>
   </div>
 </div>
-<div id="zoom"><button class="zb" id="zin">＋</button><button class="zb" id="zout">－</button></div>
+<div id="zoom"><button class="zb" id="zin">＋</button><button class="zb" id="zout">－</button><button class="zb" id="rotL">↺</button><button class="zb" id="rotR">↻</button></div>
 <div id="ctl">
   <button class="tb on" id="bDay">☀ Day</button>
   <button class="tb" id="bDusk">🌆 Dusk</button>
@@ -183,35 +183,39 @@ buildWorld();
 
 // HDRI environment
 const pmrem=new THREE.PMREMGenerator(renderer); pmrem.compileEquirectangularShader();
-new RGBELoader().load('./assets/sky.hdr',hdr=>{hdr.mapping=THREE.EquirectangularReflectionMapping;const env=pmrem.fromEquirectangular(hdr).texture;scene.environment=env;hdr.dispose();pmrem.dispose();reveal();},undefined,()=>{scene.background=new THREE.Color(0x9fb0c0);reveal();});
+reveal(); // (HDRI env removed — was overbrightening; sun+hemi+ambient light the scene)
 
 // camera
 let cam={az:0.9,azT:0.9,el:0.82,elT:0.82,dist:42,distT:42,tx:0,ty:1.0,tz:0};
 function setCam(){const cx=Math.cos(cam.az)*Math.cos(cam.el)*cam.dist,cy=Math.sin(cam.el)*cam.dist,cz=Math.sin(cam.az)*Math.cos(cam.el)*cam.dist;camera.position.set(cam.tx+cx,cam.ty+cy,cam.tz+cz);camera.lookAt(cam.tx,cam.ty,cam.tz);}
 const clampEl=v=>Math.max(0.6,Math.min(1.2,v));
 function zoomTo(v){cam.distT=Math.max(13,Math.min(80,v));}
-// --- mouse (desktop) ---
+const clampW=v=>Math.max(-46,Math.min(46,v));
+function panBy(dx,dy){const s=cam.dist*0.0017,az=cam.az;const rx=-Math.sin(az),rz=Math.cos(az),fx=-Math.cos(az),fz=-Math.sin(az);cam.tx=clampW(cam.tx-(rx*dx+fx*dy)*s);cam.tz=clampW(cam.tz-(rz*dx+fz*dy)*s);}
+// mouse: drag = pan, wheel = zoom
 let mdrag=null;
 cv.addEventListener('pointerdown',e=>{if(e.pointerType==='touch')return;mdrag={x:e.clientX,y:e.clientY};});
 window.addEventListener('pointerup',e=>{if(e.pointerType!=='touch')mdrag=null;});
-window.addEventListener('pointermove',e=>{if(e.pointerType==='touch'||!mdrag)return;cam.azT-=(e.clientX-mdrag.x)*0.004;cam.elT=clampEl(cam.elT+(e.clientY-mdrag.y)*0.0026);mdrag={x:e.clientX,y:e.clientY};});
+window.addEventListener('pointermove',e=>{if(e.pointerType==='touch'||!mdrag)return;panBy(e.clientX-mdrag.x,e.clientY-mdrag.y);mdrag={x:e.clientX,y:e.clientY};});
 cv.addEventListener('wheel',e=>{zoomTo(cam.distT+e.deltaY*0.02);e.preventDefault();},{passive:false});
-// --- touch (mobile): 1 finger = rotate, 2 fingers = pinch zoom, never both ---
+// touch: 1 finger = pan around the world, 2 fingers = pinch zoom
 let tdrag=null,pinch=null;
 const dist2=ts=>Math.hypot(ts[0].clientX-ts[1].clientX,ts[0].clientY-ts[1].clientY);
-cv.addEventListener('touchstart',e=>{if(e.touches.length===2){pinch=dist2(e.touches);tdrag=null;}else if(e.touches.length===1){tdrag={x:e.touches[0].clientX,y:e.touches[0].clientY};pinch=null;}e.preventDefault();},{passive:false});
+cv.addEventListener('touchstart',e=>{if(e.touches.length>=2){pinch=dist2(e.touches);tdrag=null;}else{tdrag={x:e.touches[0].clientX,y:e.touches[0].clientY};pinch=null;}e.preventDefault();},{passive:false});
 cv.addEventListener('touchmove',e=>{
   if(e.touches.length>=2){const d=dist2(e.touches);if(pinch)zoomTo(cam.distT-(d-pinch)*0.06);pinch=d;tdrag=null;e.preventDefault();return;}
-  if(e.touches.length===1&&tdrag){const t=e.touches[0];cam.azT-=(t.clientX-tdrag.x)*0.004;cam.elT=clampEl(cam.elT+(t.clientY-tdrag.y)*0.0026);tdrag={x:t.clientX,y:t.clientY};e.preventDefault();}
+  if(e.touches.length===1&&tdrag){const t=e.touches[0];panBy(t.clientX-tdrag.x,t.clientY-tdrag.y);tdrag={x:t.clientX,y:t.clientY};e.preventDefault();}
 },{passive:false});
-cv.addEventListener('touchend',e=>{if(e.touches.length===0){tdrag=null;pinch=null;}else if(e.touches.length===1){pinch=null;tdrag={x:e.touches[0].clientX,y:e.touches[0].clientY};}},{passive:false});
+cv.addEventListener('touchend',e=>{if(e.touches.length===0){tdrag=null;pinch=null;}else{pinch=null;tdrag={x:e.touches[0].clientX,y:e.touches[0].clientY};}},{passive:false});
 document.getElementById('zin').onclick=()=>zoomTo(cam.distT-7);
 document.getElementById('zout').onclick=()=>zoomTo(cam.distT+7);
+document.getElementById('rotL').onclick=()=>{cam.azT-=0.5;};
+document.getElementById('rotR').onclick=()=>{cam.azT+=0.5;};
 
 function applyTime(t){
   const day=new THREE.Color(0xaecbe6),dusk=new THREE.Color(0xc98a4a),night=new THREE.Color(0x0d1626);
   let sunI,sunC,hemiI,fireI,exposure,fogC;
-  if(t<0.5){const k=t/0.5;fogC=day.clone().lerp(dusk,k);sunI=1.45-0.55*k;sunC=new THREE.Color(0xfff0d4).lerp(new THREE.Color(0xff9a52),k);hemiI=0.3-0.12*k;fireI=0.4+1.8*k;exposure=0.8-0.03*k;}
+  if(t<0.5){const k=t/0.5;fogC=day.clone().lerp(dusk,k);sunI=1.45-0.55*k;sunC=new THREE.Color(0xfff0d4).lerp(new THREE.Color(0xff9a52),k);hemiI=0.3-0.12*k;fireI=0.4+1.8*k;exposure=0.72-0.04*k;}
   else{const k=(t-0.5)/0.5;fogC=dusk.clone().lerp(night,k);sunI=1.2-1.15*k;sunC=new THREE.Color(0xff9a52).lerp(new THREE.Color(0x3a4a80),k);hemiI=0.35-0.24*k;fireI=2.2+1.4*k;exposure=0.9+0.18*k;}
   scene.fog.color.copy(fogC);
   sun.intensity=Math.max(0,sunI); sun.color.copy(sunC);
